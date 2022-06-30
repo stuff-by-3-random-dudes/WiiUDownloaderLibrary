@@ -63,7 +63,7 @@ namespace WiiUDownloaderLibrary
             return titleType;
         }
 
-        public static void SaveTMD(string saveDir, byte[] data)
+        private static void SaveTMD(string saveDir, byte[] data)
         {
             try
             {
@@ -76,7 +76,7 @@ namespace WiiUDownloaderLibrary
                 throw new IOException(message, ioe);
             }
         }
-        public static void SaveTitle(string saveDir, Ticket ticket)
+        private static void SaveTitle(string saveDir, Ticket ticket)
         {
             Console.WriteLine("Saving Ticket - title.tik");
 
@@ -102,7 +102,7 @@ namespace WiiUDownloaderLibrary
                 throw new IOException(message, ioe);
             }
         }
-        public static void SetUpForTitle(string saveDir, string saveFolder)
+        private static void SetUpForTitle(string saveDir, string saveFolder)
         {
             try
             {
@@ -128,7 +128,7 @@ namespace WiiUDownloaderLibrary
             var fake = DetermineIfFake(td.TitleID);
             if (fake)
                 using (var webClient = new WebClient())
-                    await webClient.DownloadDataTaskAsync(baseURL + "cetk");
+                    ticket = GetTicket(await webClient.DownloadDataTaskAsync(baseURL + "cetk"));
             else
                 ticket = GetTicket(td, tmd.GetTitleVersion());
 
@@ -162,7 +162,7 @@ namespace WiiUDownloaderLibrary
                 var fake = DetermineIfFake(td.TitleID);
                 if (fake)
                     using (var webClient = new WebClient())
-                        webClient.DownloadData(baseURL + "cetk");
+                        ticket = GetTicket(webClient.DownloadData(baseURL + "cetk"));
                 else
                     ticket = GetTicket(td, tmd.GetTitleVersion());
 
@@ -177,7 +177,7 @@ namespace WiiUDownloaderLibrary
         }
 
 
-        public static void SetUpDirectory(string saveDir, string saveFolder)
+        private static void SetUpDirectory(string saveDir, string saveFolder)
         {
             var temp = "temp";
 
@@ -186,7 +186,7 @@ namespace WiiUDownloaderLibrary
 
             Directory.SetCurrentDirectory(Path.Combine(saveFolder, temp));
         }
-        public static async Task<Tmd> GetTmdAsync(string baseUrl)
+        private static async Task<Tmd> GetTmdAsync(string baseUrl)
         {
             Tmd tmd;
             using var webClient = new WebClient();
@@ -201,7 +201,7 @@ namespace WiiUDownloaderLibrary
             }
             return tmd;
         }
-        public static Tmd GetTmd(string baseUrl)
+        private static Tmd GetTmd(string baseUrl)
         {
             Tmd tmd;
             using var webClient = new WebClient();
@@ -217,7 +217,7 @@ namespace WiiUDownloaderLibrary
             return tmd;
         }
 
-        public static void CheckTitleSize(Tmd tmd, string saveDir)
+        private static void CheckTitleSize(Tmd tmd, string saveDir)
         {
             ulong titleSize = 0;
             for (int i = 0; i < tmd.GetContentCount(); i++)
@@ -230,13 +230,13 @@ namespace WiiUDownloaderLibrary
             Console.WriteLine(currentTitleLogStr);
         }
 
-        public static bool DetermineIfFake(string titleId)
+        private static bool DetermineIfFake(string titleId)
         {
             var titleType = GetTitleType(titleId);
             return !(titleType == TYPE_GAME || titleType == TYPE_DEMO || titleType == TYPE_DLC);
         }
 
-        public static Ticket GetTicket(byte[] cetk)
+        private static Ticket GetTicket(byte[] cetk)
         {
             Console.WriteLine("Downloading Ticket from Nintendo CDN...");
 
@@ -256,7 +256,7 @@ namespace WiiUDownloaderLibrary
             }
         }
 
-        public static Ticket GetTicket(TitleData titleData, ushort version)
+        private static Ticket GetTicket(TitleData titleData, ushort version)
         {
             Console.WriteLine("Generating Fake Ticket...");
 
@@ -268,7 +268,7 @@ namespace WiiUDownloaderLibrary
             return ticket;
         }
 
-        public static async Task GetContentFilesAsync(Tmd tmd, string saveDir, string baseUrl)
+        private static async Task GetContentFilesAsync(Tmd tmd, string saveDir, string baseUrl)
         {
             uint contentCount = tmd.GetContentCount();
 
