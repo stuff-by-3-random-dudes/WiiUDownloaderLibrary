@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Net;
+using System.Net.Http;
 using System.Threading.Tasks;
 using WiiUDownloaderLibrary.Helpers;
 using WiiUDownloaderLibrary.Models;
@@ -113,46 +114,14 @@ namespace WiiUDownloaderLibrary
         }
         public static async Task DownloadAsync(TitleData td, string saveFolder)
         {
-            var saveDir = Path.Combine(saveFolder, td.TitleID);
-            var baseURL = NINTYCDN_BASEURL + td.TitleID + "/";
-
-            SetUpForTitle(saveDir, saveFolder);
-
-            var tmd = await GetTmdAsync(baseURL);
-
-            SaveTMD(saveDir, tmd.ExportTmdData());
-            CheckTitleSize(tmd, saveDir);
-
-            var ticket = new Ticket();
-            var fake = DetermineIfFake(td.TitleID);
-            if (fake)
-                using (var webClient = new WebClient())
-                    ticket = GetTicket(await webClient.DownloadDataTaskAsync(baseURL + "cetk"));
-            else
-                ticket = GetTicket(td, tmd.GetTitleVersion());
-
-            SaveTitle(saveDir, ticket);
-            await GetContentFilesAsync(tmd, saveDir, baseURL);
-        }
-        public static void Download(TitleData td, string savefolder)
-        {
-            Task dlQueueThread = new Task(() =>
-            {
-                    DownloadTitle(td, savefolder);
-            });
-            dlQueueThread.Start();
-            dlQueueThread.Wait();
-        }
-        public static void DownloadTitle(TitleData td, string saveFolder)
-        {
-            try 
+            try
             {
                 var saveDir = Path.Combine(saveFolder, td.TitleID);
                 var baseURL = NINTYCDN_BASEURL + td.TitleID + "/";
 
                 SetUpForTitle(saveDir, saveFolder);
 
-                var tmd = GetTmd(baseURL);
+                var tmd = await GetTmdAsync(baseURL);
 
                 SaveTMD(saveDir, tmd.ExportTmdData());
                 CheckTitleSize(tmd, saveDir);
@@ -160,13 +129,13 @@ namespace WiiUDownloaderLibrary
                 var ticket = new Ticket();
                 var fake = DetermineIfFake(td.TitleID);
                 if (fake)
-                    using (var webClient = new WebClient())
-                        ticket = GetTicket(webClient.DownloadData(baseURL + "cetk"));
+                    using (var httpClient= new HttpClient())
+                        ticket = GetTicket(await httpClient.GetByteArrayAsync(baseURL + "cetk"));
                 else
                     ticket = GetTicket(td, tmd.GetTitleVersion());
 
                 SaveTitle(saveDir, ticket);
-                GetContentFiles(tmd, saveDir, baseURL);
+                await GetContentFilesAsync(tmd, saveDir, baseURL);
             }
             catch (Exception ex)
             {
@@ -174,7 +143,15 @@ namespace WiiUDownloaderLibrary
                 Console.WriteLine(errorMessage);
             }
         }
-
+        public static void Download(TitleData td, string savefolder)
+        {
+            Task dlQueueThread = new(() =>
+            {
+                    DownloadAsync(td, savefolder).RunSynchronously();
+            });
+            dlQueueThread.Start();
+            dlQueueThread.Wait();
+        }
 
         private static void SetUpDirectory(string saveDir, string saveFolder)
         {
@@ -188,25 +165,10 @@ namespace WiiUDownloaderLibrary
         private static async Task<Tmd> GetTmdAsync(string baseUrl)
         {
             Tmd tmd;
-            using var webClient = new WebClient();
+            using var httpClient = new HttpClient();
             try
             {
-                tmd = new Tmd(await webClient.DownloadDataTaskAsync(baseUrl + "tmd"));
-            }
-            catch (WebException we)
-            {
-                string message = "ERROR! Could not download TMD!";
-                throw new WebException(message, we);
-            }
-            return tmd;
-        }
-        private static Tmd GetTmd(string baseUrl)
-        {
-            Tmd tmd;
-            using var webClient = new WebClient();
-            try
-            {
-                tmd = new Tmd(webClient.DownloadData(baseUrl + "tmd"));
+                tmd = new Tmd(await httpClient.GetByteArrayAsync(baseUrl + "tmd"));
             }
             catch (WebException we)
             {
@@ -277,11 +239,13 @@ namespace WiiUDownloaderLibrary
                 string currentContentLogStr = string.Format("Downloading Content No. {0} of {1} from Nintendo CDN - {2}.app", i + 1, contentCount, cidStr);
                 Console.WriteLine(currentContentLogStr);
 
-                using (var webClient = new WebClient())
+                using (var httpClient = new HttpClient())
                 {
                     try
                     {
-                        await webClient.DownloadFileTaskAsync(new Uri(baseUrl + cidStr), Path.Combine(saveDir, cidStr.ToUpper() + ".app"));
+                        using var response = await httpClient.GetStreamAsync(new Uri(baseUrl + cidStr));
+                        using var fs = new FileStream(Path.Combine(saveDir, cidStr.ToUpper() + ".app"), FileMode.Create);
+                        await response.CopyToAsync(fs);
                     }
                     catch (WebException we)
                     {
@@ -296,81 +260,27 @@ namespace WiiUDownloaderLibrary
                 }
 
                 Console.WriteLine(string.Format("Downloading H3 for Content No.{0} from Nintendo CDN - {1}.h3", i + 1, cidStr));
-                using (var webClient = new WebClient())
+                using var httpClient1 = new HttpClient();
+                try
                 {
-                    try
-                    {
-                        await webClient.DownloadFileTaskAsync(baseUrl + cidStr + ".h3", Path.Combine(saveDir, cidStr.ToUpper() + ".h3"));
-                    }
-                    catch (WebException we)
-                    {
-                        if (((HttpWebResponse)we.Response).StatusCode == HttpStatusCode.NotFound)
-                            Console.WriteLine(string.Format("WARNING: {0}.h3 not found, ignoring...", cidStr));
-                        else
-                        {
-                            string message = "ERROR! Could not download " + cidStr + ".h3";
-                            throw new WebException(message, we);
-                        }
-                    }
-                    catch (IOException ioe)
-                    {
-                        string message = "ERROR! Could not save " + cidStr + ".h3";
-                        throw new IOException(message, ioe);
-                    }
+                    using var response = await httpClient1.GetStreamAsync(new Uri(baseUrl + cidStr + ".h3"));
+                    using var fs = new FileStream(Path.Combine(saveDir, cidStr.ToUpper() + ".h3"), FileMode.Create);
+                    await response.CopyToAsync(fs);
                 }
-            }
-            Console.WriteLine("Download Complete!");
-        }
-        private static void GetContentFiles(Tmd tmd, string saveDir, string baseUrl)
-        {
-            uint contentCount = tmd.GetContentCount();
-
-            for (uint i = 0; i < contentCount; i++)
-            {
-                var cidStr = tmd.GetContentIDString(i);
-                string currentContentLogStr = string.Format("Downloading Content No. {0} of {1} from Nintendo CDN - {2}.app", i + 1, contentCount, cidStr);
-                Console.WriteLine(currentContentLogStr);
-
-                using (var webClient = new WebClient())
+                catch (WebException we)
                 {
-                    try
+                    if (((HttpWebResponse)we.Response).StatusCode == HttpStatusCode.NotFound)
+                        Console.WriteLine(string.Format("WARNING: {0}.h3 not found, ignoring...", cidStr));
+                    else
                     {
-                        webClient.DownloadFile(new Uri(baseUrl + cidStr), Path.Combine(saveDir, cidStr.ToUpper() + ".app"));
-                    }
-                    catch (WebException we)
-                    {
-                        string message = "ERROR! Could not download " + cidStr.ToUpper() + ".app";
+                        string message = "ERROR! Could not download " + cidStr + ".h3";
                         throw new WebException(message, we);
                     }
-                    catch (IOException ioe)
-                    {
-                        string message = "ERROR! Could not save " + cidStr.ToUpper() + ".app";
-                        throw new IOException(message, ioe);
-                    }
                 }
-
-                Console.WriteLine(string.Format("Downloading H3 for Content No.{0} from Nintendo CDN - {1}.h3", i + 1, cidStr));
-                using (var webClient = new WebClient())
+                catch (IOException ioe)
                 {
-                    try
-                    {
-                        webClient.DownloadFile(baseUrl + cidStr + ".h3", Path.Combine(saveDir, cidStr.ToUpper() + ".h3"));
-                    }
-                    catch (WebException we)
-                    {
-                        if (((HttpWebResponse)we.Response).StatusCode == HttpStatusCode.NotFound)
-                            Console.WriteLine(string.Format("WARNING: {0}.h3 not found, ignoring...", cidStr));
-                        else
-                        {
-                            string message = "ERROR! Could not download " + cidStr + ".h3";
-                            throw new WebException(message, we);
-                        }
-                    }
-                    catch (IOException ioe)
-                    {
-                        string message = "ERROR! Could not save " + cidStr + ".h3";
-                        throw new IOException(message, ioe);
-                    }
+                    string message = "ERROR! Could not save " + cidStr + ".h3";
+                    throw new IOException(message, ioe);
                 }
             }
             Console.WriteLine("Download Complete!");
