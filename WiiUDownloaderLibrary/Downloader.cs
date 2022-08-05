@@ -112,7 +112,7 @@ namespace WiiUDownloaderLibrary
             }
             catch { }
         }
-        public static async void DownloadAsync(TitleData td, string saveFolder)
+        public static async Task DownloadAsync(TitleData td, string saveFolder)
         {
             var saveDir = Path.Combine(saveFolder, td.TitleID);
             var baseURL = NINTYCDN_BASEURL + td.TitleID + "/";
