@@ -1,10 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
 using System.IO;
 using System.Net;
-using System.Threading;
 using System.Threading.Tasks;
+using WiiUDownloaderLibrary.Helpers;
+using WiiUDownloaderLibrary.Models;
 
 namespace WiiUDownloaderLibrary
 {
