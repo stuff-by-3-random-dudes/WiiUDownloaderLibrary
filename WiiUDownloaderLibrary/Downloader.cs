@@ -10,22 +10,14 @@ namespace WiiUDownloaderLibrary
 {
     public class Downloader
     {
-        public const string TYPE_GAME = "GAME";
-        public const string TYPE_DEMO = "DEMO";
-        public const string TYPE_UPDATE = "GAME-UPDATE";
-        public const string TYPE_DLC = "GAME-DLC";
-        public const string TYPE_SYSAPP = "SYSTEM-APP";
-        public const string TYPE_SYSDATA = "SYSTEM-DATA";
-        public const string TYPE_BACKGROUND = "BACKGROUND-TITLE";
-
-        public const string REG_JPN = "JPN";
-        public const string REG_USA = "USA";
-        public const string REG_EUR = "EUR";
-        public const string REG_CHN = "CHN";
-        public const string REG_KOR = "KOR";
-        public const string REG_TWN = "TWN";
-        public const string REG_UNK = "UNK";
-        public const string NINTYCDN_BASEURL = "http://ccs.cdn.c.shop.nintendowifi.net/ccs/download/";
+        private const string TYPE_GAME = "GAME";
+        private const string TYPE_DEMO = "DEMO";
+        private const string TYPE_UPDATE = "GAME-UPDATE";
+        private const string TYPE_DLC = "GAME-DLC";
+        private const string TYPE_SYSAPP = "SYSTEM-APP";
+        private const string TYPE_SYSDATA = "SYSTEM-DATA";
+        private const string TYPE_BACKGROUND = "BACKGROUND-TITLE";
+        private const string NINTYCDN_BASEURL = "http://ccs.cdn.c.shop.nintendowifi.net/ccs/download/";
         private static string GetTitleType(string titleID)
         {
             string titleType = "";
@@ -127,7 +119,7 @@ namespace WiiUDownloaderLibrary
                 CheckTitleSize(tmd, saveDir);
 
                 var ticket = new Ticket();
-                var fake = DetermineIfFake(td.TitleID);
+                var fake = string.IsNullOrEmpty(td.TitleKey) || DetermineIfFake(td.TitleID);
                 if (fake)
                     using (var httpClient= new HttpClient())
                         ticket = GetTicket(await httpClient.GetByteArrayAsync(baseURL + "cetk"));
@@ -151,6 +143,18 @@ namespace WiiUDownloaderLibrary
             });
             dlQueueThread.Start();
             dlQueueThread.Wait();
+        }
+
+        public static void Download(string titleId, string savefolder)
+        {
+            var titleData = new TitleData(titleId);
+            Download(titleData, savefolder);
+        }
+
+        public static async Task DownloadAsync(string titleId, string saveFolder)
+        {
+            var titleData = new TitleData(titleId);
+            await DownloadAsync(titleData, saveFolder);
         }
 
         private static void SetUpDirectory(string saveDir, string saveFolder)
