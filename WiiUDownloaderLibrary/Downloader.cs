@@ -119,7 +119,10 @@ namespace WiiUDownloaderLibrary
                 CheckTitleSize(tmd, saveDir);
 
                 var ticket = new Ticket();
-                var fake = string.IsNullOrEmpty(td.TitleKey) || DetermineIfFake(td.TitleID);
+                var fake = false;
+                if (!string.IsNullOrEmpty(td.TitleKey))
+                    fake = DetermineIfFake(td.TitleID);
+                
                 if (fake)
                     using (var httpClient= new HttpClient())
                         ticket = GetTicket(await httpClient.GetByteArrayAsync(baseURL + "cetk"));
