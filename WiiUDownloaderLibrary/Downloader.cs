@@ -119,7 +119,7 @@ namespace WiiUDownloaderLibrary
                 CheckTitleSize(tmd, saveDir);
 
                 var ticket = new Ticket();
-                var fake = false;
+                var fake = true;
                 if (!string.IsNullOrEmpty(td.TitleKey))
                     fake = DetermineIfFake(td.TitleID);
                 
