@@ -138,20 +138,21 @@ namespace WiiUDownloaderLibrary
                 Console.WriteLine(errorMessage);
             }
         }
-        public static void Download(TitleData td, string savefolder)
+        public static void Download(TitleData td, string saveFolder)
         {
             Task dlQueueThread = new(() =>
             {
-                    DownloadAsync(td, savefolder).RunSynchronously();
+                    DownloadAsync(td, saveFolder);
             });
             dlQueueThread.Start();
             dlQueueThread.Wait();
+
         }
 
-        public static void Download(string titleId, string savefolder)
+        public static void Download(string titleId, string saveFolder)
         {
             var titleData = new TitleData(titleId);
-            Download(titleData, savefolder);
+            Download(titleData, saveFolder);
         }
 
         public static async Task DownloadAsync(string titleId, string saveFolder)
