@@ -140,7 +140,7 @@ namespace WiiUDownloaderLibrary
         }
         public static void Download(TitleData td, string saveFolder)
         {
-            Task dlQueueThread = new(() =>
+            Task dlQueueThread = new Task(() =>
             {
                     DownloadAsync(td, saveFolder);
             });
@@ -173,16 +173,16 @@ namespace WiiUDownloaderLibrary
         private static async Task<Tmd> GetTmdAsync(string baseUrl)
         {
             Tmd tmd;
-            using var httpClient = new HttpClient();
-            try
-            {
-                tmd = new Tmd(await httpClient.GetByteArrayAsync(baseUrl + "tmd"));
-            }
-            catch (WebException we)
-            {
-                string message = "ERROR! Could not download TMD!";
-                throw new WebException(message, we);
-            }
+            using (var httpClient = new HttpClient())
+                try
+                {
+                    tmd = new Tmd(await httpClient.GetByteArrayAsync(baseUrl + "tmd"));
+                }
+                catch (WebException we)
+                {
+                    string message = "ERROR! Could not download TMD!";
+                    throw new WebException(message, we);
+                }
             return tmd;
         }
 
@@ -241,62 +241,54 @@ namespace WiiUDownloaderLibrary
         {
             uint contentCount = tmd.GetContentCount();
 
-            for(uint i = 0; i < contentCount; i++)
+            for (uint i = 0; i < contentCount; i++)
             {
                 var cidStr = tmd.GetContentIDString(i);
                 string currentContentLogStr = string.Format("Downloading Content No. {0} of {1} from Nintendo CDN - {2}.app", i + 1, contentCount, cidStr);
                 Console.WriteLine(currentContentLogStr);
 
-                using var httpClient = new HttpClient();
-                try
+                using (var httpClient = new HttpClient())
                 {
-                    using var response = await httpClient.GetStreamAsync(new Uri(baseUrl + cidStr));
-                    using var fs = new FileStream(Path.Combine(saveDir, cidStr.ToUpper() + ".app"), FileMode.Create);
-                    await response.CopyToAsync(fs);
-                }
-                catch (WebException we)
-                {
-                    string message = "ERROR! Could not download " + cidStr.ToUpper() + ".app";
-                    throw new WebException(message, we);
-                }
-                catch (IOException ioe)
-                {
-                    string message = "ERROR! Could not save " + cidStr.ToUpper() + ".app";
-                    throw new IOException(message, ioe);
-                }
-
-
-                Console.WriteLine(string.Format("Downloading H3 for Content No.{0} from Nintendo CDN - {1}.h3", i + 1, cidStr));
-                try
-                {
-                    using var response = await httpClient.GetStreamAsync(new Uri(baseUrl + cidStr + ".h3"));
-                    using var fs = new FileStream(Path.Combine(saveDir, cidStr.ToUpper() + ".h3"), FileMode.Create);
-                    await response.CopyToAsync(fs);
-                }
-                catch(HttpRequestException hpe)
-                {
-                    if (hpe.StatusCode == HttpStatusCode.NotFound) 
-                        Console.WriteLine(string.Format("WARNING: {0}.h3 not found, ignoring...", cidStr));
-                    else
+                    try
                     {
-                        string message = "ERROR! Could not download " + cidStr + ".h3";
-                        throw new HttpRequestException(message, hpe);
+                        using (var response = await httpClient.GetStreamAsync(new Uri(baseUrl + cidStr)))
+                        using (var fs = new FileStream(Path.Combine(saveDir, cidStr.ToUpper() + ".app"), FileMode.Create))
+                            await response.CopyToAsync(fs);
                     }
-                }
-                catch (WebException we)
-                {
-                    if (((HttpWebResponse)we.Response).StatusCode == HttpStatusCode.NotFound)
-                        Console.WriteLine(string.Format("WARNING: {0}.h3 not found, ignoring...", cidStr));
-                    else
+                    catch (WebException we)
                     {
-                        string message = "ERROR! Could not download " + cidStr + ".h3";
+                        string message = "ERROR! Could not download " + cidStr.ToUpper() + ".app";
                         throw new WebException(message, we);
                     }
-                }
-                catch (IOException ioe)
-                {
-                    string message = "ERROR! Could not save " + cidStr + ".h3";
-                    throw new IOException(message, ioe);
+                    catch (IOException ioe)
+                    {
+                        string message = "ERROR! Could not save " + cidStr.ToUpper() + ".app";
+                        throw new IOException(message, ioe);
+                    }
+
+
+                    Console.WriteLine(string.Format("Downloading H3 for Content No.{0} from Nintendo CDN - {1}.h3", i + 1, cidStr));
+                    try
+                    {
+                        using (var response = await httpClient.GetStreamAsync(new Uri(baseUrl + cidStr + ".h3")))
+                        using (var fs = new FileStream(Path.Combine(saveDir, cidStr.ToUpper() + ".h3"), FileMode.Create))
+                            await response.CopyToAsync(fs);
+                    }
+                    catch (WebException we)
+                    {
+                        if (((HttpWebResponse)we.Response).StatusCode == HttpStatusCode.NotFound)
+                            Console.WriteLine(string.Format("WARNING: {0}.h3 not found, ignoring...", cidStr));
+                        else
+                        {
+                            string message = "ERROR! Could not download " + cidStr + ".h3";
+                            throw new WebException(message, we);
+                        }
+                    }
+                    catch (IOException ioe)
+                    {
+                        string message = "ERROR! Could not save " + cidStr + ".h3";
+                        throw new IOException(message, ioe);
+                    }
                 }
             }
             Console.WriteLine("Download Complete!");
