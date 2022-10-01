@@ -68,14 +68,28 @@ namespace WiiUDownloaderLibrary.Helpers
             if (IEC)
                 baseStr = "iB";
 
-            return power switch
+            var result = "";
+
+            switch (power)
             {
-                1 => "K" + baseStr,
-                2 => "M" + baseStr,
-                3 => "G" + baseStr,
-                4 => "T" + baseStr,
-                _ => "B",
-            };
+                case 1:
+                    result = "K" + baseStr;
+                    break;
+                case 2:
+                    result = "M" + baseStr;
+                    break;
+                case 3:
+                    result = "G" + baseStr;
+                    break;
+                case 4:
+                    result = "T" + baseStr;
+                  break;
+                default:
+                    result = "B";
+                    break;
+            }
+
+            return result;
         }
 
         public static string ConvertByteToText(this double byteNum, bool IEC = false)
@@ -113,7 +127,7 @@ namespace WiiUDownloaderLibrary.Helpers
 
         public static long GetFileLength(this string filePath)
         {
-            FileInfo fi = new(filePath);
+            FileInfo fi = new FileInfo(filePath);
 
             return fi.Length;
         }
